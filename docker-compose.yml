@@ -1,0 +1,54 @@
+services:
+  server:
+    build:
+      context: ./
+      dockerfile: ./server/Dockerfile
+    container_name: nginx-rtmp
+    volumes:
+      - ./logs:/logs
+    ports:
+      - "1935:1935"
+      - "8080:80"
+    cap_add:
+      - NET_ADMIN
+    privileged: false
+    networks:
+      app_net:
+        ipv4_address: 192.168.100.2
+
+  publish:
+    build:
+      context: ./
+      dockerfile: ./publish/Dockerfile
+    container_name: rtmp-publish
+    depends_on:
+      - server
+    volumes:
+      - ./publish/video_samples:/video_samples
+      - ./logs:/logs
+    cap_add:
+      - NET_ADMIN
+    privileged: false
+    networks:
+      app_net:
+        ipv4_address: 192.168.100.3
+
+  # playback:
+  #   build:
+  #     context: ./playback
+  #   container_name: hls-playback
+  #   depends_on:
+  #     - publish
+  #   cap_add:
+  #     - NET_ADMIN
+  #   privileged: false
+  #   networks:
+  #     app_net:
+  #       ipv4_address: 192.168.100.4
+
+networks:
+  app_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.100.0/24
