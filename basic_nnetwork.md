@@ -56,6 +56,22 @@ An Ethernet frame consists of the following components:
 | **Options (Optional)** | Variable    | Additional options (e.g., security or timestamp).                        |
 | **Padding**            | Variable    | Ensures the header ends at a 32-bit boundary.                            |
 
+### IPv6 Header Structure
+
+The IPv6 header is **40 bytes** in size and has the following fields:
+
+| **Field**            | **Size**      | **Description**                                                                                     |
+|----------------------|---------------|-----------------------------------------------------------------------------------------------------|
+| **Version**          | 4 bits        | IP version, always `6` for IPv6.                                                                    |
+| **Traffic Class**    | 8 bits        | Used for packet priority or Quality of Service (QoS).                                               |
+| **Flow Label**       | 20 bits       | Identifies traffic flows for special handling (e.g., QoS).                                           |
+| **Payload Length**   | 16 bits       | Length of the payload in bytes (excluding the IPv6 header).                                          |
+| **Next Header**      | 8 bits        | Specifies the type of the next header or protocol (e.g., TCP, UDP, or extension headers).            |
+| **Hop Limit**        | 8 bits        | The maximum number of hops (similar to IPv4 TTL); decremented at each hop.                          |
+| **Source Address**   | 128 bits (16 bytes) | The IPv6 address of the sender.                                                                 |
+| **Destination Address** | 128 bits (16 bytes) | The IPv6 address of the recipient.                                                          |
+
+
 ### TCP Header Structure
 
 | Field                  | Size        | Description                                                             |

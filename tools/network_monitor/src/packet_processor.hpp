@@ -29,9 +29,12 @@ namespace networkmonitor
         std::string srcIP;
         std::string dstIP;
         std::string name;
-        long received_bytes;
-        long sent_bytes;
+        long received_bytes_per_period;
+        long sent_bytes_per_period;
+        long total_received_bytes;
+        long total_sent_bytes;
         long last_print;
+        long started;
     };
 
     class PacketProcessor
@@ -59,9 +62,14 @@ namespace networkmonitor
         std::thread processorWorker;
         std::mutex dataMutex;
         std::atomic<bool> stop_running;
-        long received_bytes;
-        long sent_bytes;
+        long received_bytes_per_period;
+        long sent_bytes_per_period;
+        long received_packets_per_period;
+        long sent_packets_per_period;
+        long total_sent_bytes;
+        long total_received_bytes;
         long last_print;
+        long started;
     };
 } // namespace networkmonitor
 

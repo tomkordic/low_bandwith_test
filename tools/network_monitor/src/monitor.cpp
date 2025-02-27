@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
     char *dev = argv[1]; // Network interface to capture packets on
     PacketProcessor processor(dev);
     while (processor.isRunning()) {
-        std::this_thread::sleep_for(std::chrono::seconds(3));
+        std::this_thread::sleep_for(std::chrono::seconds(1));
         processor.print("");
     }
 

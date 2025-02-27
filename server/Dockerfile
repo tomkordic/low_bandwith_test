@@ -17,11 +17,17 @@ RUN apt-get update && \
     libssl-dev \
     wget \
     iproute2 \
+    iputils-ping \
+    net-tools \
     ffmpeg \
+    tcpdump \
     libpcap-dev \
     cmake \
     curl && \
     apt-get clean
+
+# Set the CFLAGS environment variable
+ENV CFLAGS="$CFLAGS -Wno-error"
 
 # Copy and install NGINX with nginx-rtmp-module, we can not use NGINX_VERSION in the COPY command
 COPY server/nginx-1.25.2 /install/nginx-1.25.2
@@ -49,14 +55,12 @@ EXPOSE 80 1935
 # Uncomment the following line if you want to include custom configs
 COPY server/nginx.conf /install/nginx/conf/nginx.conf
 
-RUN mkdir -p /install/network_monitor/build
-COPY tools/network_monitor/CMakeLists.txt /install/network_monitor/
-COPY tools/network_monitor/src /install/network_monitor/src
-
-
-WORKDIR /install/network_monitor/build
+RUN mkdir -p /install/net_mhm_itf/build
+COPY tools/net_mhm_itf/CMakeLists.txt /install/net_mhm_itf/
+COPY tools/net_mhm_itf/src /install/net_mhm_itf/src
+WORKDIR /install/net_mhm_itf/build
 RUN cmake .. && make
-RUN chmod +x ./network_monitor
+RUN chmod +x ./network_mayhem
 
 # Start NGINX
 CMD ["nginx", "-g", "daemon off;"]

@@ -11,7 +11,9 @@ using namespace networkmonitor;
 
 constexpr const char *PROC_TAG = "NET_PROCESSOR";
 
-NetworkClient::NetworkClient(std::string srcIP, std::string dstIP) : srcIP(srcIP), dstIP(dstIP), received_bytes(0), sent_bytes(0), last_print(get_utc())
+NetworkClient::NetworkClient(std::string srcIP, std::string dstIP) : srcIP(srcIP), dstIP(dstIP), 
+    total_received_bytes(0), total_sent_bytes(0), received_bytes_per_period(0), sent_bytes_per_period(0), 
+    last_print(get_utc()), started(get_utc())
 {
     name = ip_to_hostname(srcIP);
     if (name.compare(srcIP) == 0)
@@ -23,21 +25,27 @@ NetworkClient::NetworkClient(std::string srcIP, std::string dstIP) : srcIP(srcIP
 
 void NetworkClient::print(std::string prefix, long period)
 {
-    if (sent_bytes == 0 && received_bytes == 0)
+    if (sent_bytes_per_period == 0 && received_bytes_per_period == 0)
     {
         return;
     }
-    long up_speed = sent_bytes * 8 / period;
-    long down_speed = received_bytes * 8 / period;
+    long up_speed = sent_bytes_per_period  / (period);
+    long down_speed = received_bytes_per_period  / (period);
+    long average_up_speed = total_sent_bytes / ((get_utc() - started));
+    long average_down_speed = total_received_bytes / ((get_utc() - started));
     Logger::getInstance().log(prefix + "=== " + name + "<" + srcIP + "> ===", Logger::Severity::INFO, PROC_TAG);
     Logger::getInstance().log(prefix + "    DS: " + std::to_string(down_speed) + " kbps, US: " + std::to_string(up_speed) + " kbps", Logger::Severity::INFO, PROC_TAG);
+    Logger::getInstance().log(prefix + "    AV_DS: " + std::to_string(average_down_speed) + " kbps, AV_US: " + std::to_string(average_up_speed) + " kbps", Logger::Severity::INFO, PROC_TAG);
     // Logger::getInstance().log(prefix + "-----------------------------" ,Logger::Severity::INFO, PROC_TAG);
     last_print = get_utc();
-    sent_bytes = 0;
-    received_bytes = 0;
+    sent_bytes_per_period = 0;
+    received_bytes_per_period = 0;
 }
 
-PacketProcessor::PacketProcessor(char *dev) : dev(dev), stop_running(false), received_bytes(0), sent_bytes(0), last_print(get_utc())
+PacketProcessor::PacketProcessor(char *dev) : dev(dev), stop_running(false), 
+    total_received_bytes(0), total_sent_bytes(0), received_bytes_per_period(0), sent_bytes_per_period(0), 
+    received_packets_per_period(0), sent_packets_per_period(0),
+    last_print(get_utc()), started(get_utc())
 {
     Logger::getInstance().log("\n\n ======= Network monitor started ... ======\n\n", Logger::Severity::INFO, PROC_TAG);
     struct ifaddrs *ifaddr, *ifa;
@@ -128,14 +136,20 @@ void PacketProcessor::processPacket(const struct pcap_pkthdr *packetHeader, cons
     if (isIncomingPacket(dstIP))
     {
         std::shared_ptr<NetworkClient> remote = getClientForIp(dstIP, srcIP);
-        received_bytes += payloadLength;
-        remote->sent_bytes += payloadLength;
+        received_bytes_per_period++;
+        received_bytes_per_period += payloadLength;
+        total_received_bytes += payloadLength;
+        remote->sent_bytes_per_period += payloadLength;
+        remote->total_sent_bytes += payloadLength;
     }
     else
     {
         std::shared_ptr<NetworkClient> remote = getClientForIp(srcIP, dstIP);
-        sent_bytes += payloadLength;
-        remote->received_bytes += payloadLength;
+        sent_bytes_per_period++;
+        sent_bytes_per_period += payloadLength;
+        total_sent_bytes += payloadLength;
+        remote->received_bytes_per_period += payloadLength;
+        remote->total_received_bytes += payloadLength;
     }
 }
 
@@ -169,8 +183,10 @@ void PacketProcessor::print(std::string prefix)
 {
     std::lock_guard<std::mutex> lock(dataMutex);
     long period = get_utc() - last_print;
-    long up_speed = sent_bytes * 8 / period;       // kbps
-    long down_speed = received_bytes * 8 / period; // kbps
+    long up_speed = sent_bytes_per_period  / (period);       // kbps
+    long down_speed = received_bytes_per_period  / (period); // kbps
+    long average_up_speed = total_sent_bytes / ((get_utc() - started));
+    long average_down_speed = total_received_bytes / ((get_utc() - started));
     Logger::getInstance().log(prefix + "=====  NET STATS =====", Logger::Severity::INFO, PROC_TAG);
     Logger::getInstance().log(prefix + "    Remote peers:", Logger::Severity::INFO, PROC_TAG);
     for (auto client : remote_clients)
@@ -178,11 +194,15 @@ void PacketProcessor::print(std::string prefix)
         client->print(prefix + "    ", period);
     }
     Logger::getInstance().log(prefix + "======== TOTAL =======", Logger::Severity::INFO, PROC_TAG);
-    Logger::getInstance().log(prefix + "    DS: " + std::to_string(down_speed) + " kbps, US: " + std::to_string(up_speed) + " kbps", Logger::Severity::INFO, PROC_TAG);
+    Logger::getInstance().log(prefix + "    DS: " + std::to_string(down_speed) + " kbps, US: " + std::to_string(up_speed) + " kbps, RPP: " +
+            std::to_string(received_bytes_per_period) + ", SPP: " + std::to_string(sent_bytes_per_period), Logger::Severity::INFO, PROC_TAG);
+    Logger::getInstance().log(prefix + "    AV_DS: " + std::to_string(average_down_speed) + " kbps, AV_US: " + std::to_string(average_up_speed) + " kbps", Logger::Severity::INFO, PROC_TAG);
     Logger::getInstance().log(prefix + "======================\n\n", Logger::Severity::INFO, PROC_TAG);
     last_print = get_utc();
-    sent_bytes = 0;
-    received_bytes = 0;
+    sent_bytes_per_period = 0;
+    received_bytes_per_period = 0;
+    received_packets_per_period = 0;
+    sent_packets_per_period = 0;
 }
 
 bool PacketProcessor::isRunning()

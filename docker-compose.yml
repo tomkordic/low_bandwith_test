@@ -4,6 +4,7 @@ services:
       context: ./
       dockerfile: ./server/Dockerfile
     container_name: nginx-rtmp
+    privileged: true
     volumes:
       - ./logs:/logs
     ports:
@@ -11,7 +12,7 @@ services:
       - "8080:80"
     cap_add:
       - NET_ADMIN
-    privileged: false
+    # network_mode: "host"
     networks:
       app_net:
         ipv4_address: 192.168.100.2
@@ -21,6 +22,7 @@ services:
       context: ./
       dockerfile: ./publish/Dockerfile
     container_name: rtmp-publish
+    privileged: true
     depends_on:
       - server
     volumes:
@@ -28,24 +30,33 @@ services:
       - ./logs:/logs
     cap_add:
       - NET_ADMIN
-    privileged: false
     networks:
       app_net:
         ipv4_address: 192.168.100.3
 
-  # playback:
-  #   build:
-  #     context: ./playback
-  #   container_name: hls-playback
-  #   depends_on:
-  #     - publish
-  #   cap_add:
-  #     - NET_ADMIN
-  #   privileged: false
-  #   networks:
-  #     app_net:
-  #       ipv4_address: 192.168.100.4
+  admin:
+    build:
+      context: ./
+      dockerfile: ./admin/Dockerfile
+    container_name: admin
+    cap_add:
+      - NET_ADMIN
+    privileged: true
+    network_mode: "host"
+    pid: "host"
+    volumes:
+      - /:/host
 
+
+# networks:
+#   app_net:
+#     driver: macvlan
+#     driver_opts:
+#       parent: eth0
+#     ipam:
+#       config:
+#         - subnet: 192.168.100.0/24
+#           gateway: 192.168.100.1
 networks:
   app_net:
     driver: bridge
